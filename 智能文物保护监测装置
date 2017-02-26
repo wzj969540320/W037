@@ -1,0 +1,134 @@
+#include "U8glib.h"//与显示有关的库函数
+#include <Wire.h>//采集温湿度的必要的库，也不是很了解··
+#include "I2Cdev.h"// 有关温湿度的库函数。
+ 
+#include <SHT2x.h>    //有关传递温湿度数据的库函数。
+#include <AM2321.h>        //采集温湿度的必要的库，也不是很了解··
+#include <Adafruit_NeoPixel.h>  //有关LED灯的头文件
+#define PIN 6 /*定义了控制LED的引脚，6表示Microduino的D6引脚，可通过Hub转接出来，用户可以更改 */
+#define PIN_NUM 1 //定义允许接的led灯的个数
+Adafruit_NeoPixel strip = Adafruit_NeoPixel(PIN_NUM, PIN, NEO_GRB + NEO_KHZ800);
+#define buzzer_pin 4 //定义蜂鸣器驱动引脚
+#define buzzer_fre 600 //定义蜂鸣器输出频率
+U8GLIB_SSD1306_128X64 u8g(U8G_I2C_OPT_NONE);//定义OLED连接方式
+void read();//      对自定义函数read的声明
+
+float sensor_tem;//    这个变量用来存储温度值
+float shidu;//        这个变量用来存储湿度值
+
+void draw(void) 
+{
+  u8g.setFont(u8g_font_unifont);//字体1
+  u8g.drawStr( 0, 16, "That's  too  hot!!");//   这个函数在温度高时显示提示
+  
+}
+
+void draw2(void) //     这个自定义函数在温湿度适宜的时候显示条件合适
+{
+  u8g.setFont(u8g_font_unifont);//字体1
+  u8g.drawStr( 0, 16, "shi&wen is suit");
+}
+
+void draw3(void) //         这个自定义函数在湿度太高是显示提示信息
+{
+  u8g.setFont(u8g_font_unifont);//字体1
+  u8g.drawStr( 0, 16, "shidu too high!");
+}
+
+void draw4(void) //          这个自定义函数在温度是湿度都太高时显示提示信息
+{
+  u8g.setFont(u8g_font_unifont);//字体1
+  u8g.drawStr( 0, 16, "shi&wen too high!");
+}
+
+
+void setup() 
+{
+  Serial.begin(9600);   //设置显示具体温室的的波特率
+  pinMode(buzzer_pin,OUTPUT);//  将蜂鸣器端口定义成输出状态
+  Wire.begin(); //    初始化
+  strip.begin();//将LED灯的状态初始化
+  strip.show(); // 所有串口处于关的状态。
+}
+
+void loop() {
+  read();
+  if(sensor_tem>22.0&&shidu<45)                   //第一个条件，若温度太高但是湿度不高时
+  {
+    Serial.print("the wendu is too high!!!!!!!!!!!"); 
+    strip.setPixelColor(0, strip.Color(255, 0, 0));//红光
+    strip.show();//表示LED显示
+    delay(1000);  //延迟1秒输出
+    tone(buzzer_pin,buzzer_fre);    //驱动蜂鸣器
+    delay(1000);// 蜂鸣器响一段时间
+    noTone(buzzer_pin);//   使蜂鸣器停止响
+    u8g.firstPage();  //有关OLED屏幕显示的一段代码
+    do 
+    {
+      draw();
+    } while( u8g.nextPage() );
+    delay(500);
+  }
+
+  else if(sensor_tem<22.0&&shidu>45)                 //第二个选择结构，当温度低湿度高时执行下面的代码
+  {
+    Serial.print("the shidu is too high!!!!!!!!!!!"); 
+    strip.setPixelColor(0, strip.Color(255, 255, 0));//显示一种颜色啦
+    strip.show();//表示LED显示
+    delay(1000);  //延迟1秒输出
+    tone(buzzer_pin,buzzer_fre);    //驱动蜂鸣器
+    delay(1000);
+    noTone(buzzer_pin);//  让蜂鸣器关闭
+    u8g.firstPage();  //   与OLED显示有关的一段代码
+    do 
+    {
+      draw3();
+    } while( u8g.nextPage() );
+    delay(500);
+  }
+
+  else if(sensor_tem>22.0&&shidu>45)            //  第三个选择结构，当温湿度均较高时，执行下面的代码
+  {
+    Serial.print("the shidu and wendu is too high!!!!!!!!!!!"); //   在串口监视器上显示提示信息
+    strip.setPixelColor(0, strip.Color(0, 255, 255));//显示一种颜色啦
+    strip.show();//表示LED显示
+    delay(1000);  //延迟1秒输出
+    tone(buzzer_pin,buzzer_fre);    //驱动蜂鸣器
+    delay(1000);//  
+    noTone(buzzer_pin);// 让蜂鸣器停止响
+    u8g.firstPage();  
+    do 
+    {
+      draw4();
+    } while( u8g.nextPage() );
+    delay(500);//
+  }
+
+  else
+  {
+    strip.setPixelColor(0, strip.Color(0, 0, 0));//显示一种颜色啦
+    strip.show();//表示LED显示
+
+    
+  u8g.firstPage();  
+    do                       //   与OLED有关的一段代码
+    {
+      draw2();
+    } while( u8g.nextPage() );
+  delay(500);
+  }
+}
+
+
+
+
+
+void read()//自定义的read函数，用来存储温湿度的值
+{
+  shidu=SHT2x.GetHumidity();//把湿度值付赋给shidu
+  sensor_tem = SHT2x.GetTemperature() ;//把获得的温度值赋给变量sensor_tem
+  Serial.println(sensor_tem);//串口监视器上显示温度值
+  Serial.print("--");   
+  Serial.println(SHT2x.GetHumidity());         //在串口监视器上显示湿度值
+  delay(100);
+}
